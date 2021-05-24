@@ -12,7 +12,7 @@ admin.initializeApp();
 //   response.send("Hello from Firebase!");
 // });
 
-exports.onInvoiceCreate_1 = functions.firestore
+exports.onInvoiceCreate = functions.firestore
     .document('/invoices/{invoiceId}')
     .onCreate((snapshot, context) => {
         const invoiceId = context.params.invoiceId;
@@ -41,7 +41,7 @@ exports.onInvoiceDelete = functions.firestore
         const tenantid = tenant.split('/')[1];
         const ref = admin.firestore().collection('tenant_invoices').doc(tenantid);
 
-        let invoicesSnap = await admin.firestore().collection('invoices').where('tenant', '==', tenant).orderBy('invoice_code', 'desc').limit(1).get();
+        let invoicesSnap = await admin.firestore().collection('invoices').where('tenant', '==', tenant).orderBy('invoice_code', 'desc').get();
 
         if (!invoicesSnap.empty) {
             let invoices = invoicesSnap.docs;
@@ -55,10 +55,13 @@ exports.onInvoiceDelete = functions.firestore
                 });
         }
         else {
+            let tenantInvoiceDoc = await ref.get();
+            let _defaults = tenantInvoiceDoc.data();
+
             return ref
                 .update({
-                    current_invoice: 0,
-                    next_invoice: 1,
+                    current_invoice: _defaults.hasOwnProperty('base_invoice') ? _defaults.base_invoice : 0,
+                    next_invoice: _defaults.hasOwnProperty('base_invoice') ? _defaults.base_invoice + 1 : 1,
                     num_invoices: 0
                 });
         }
